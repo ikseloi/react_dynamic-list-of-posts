@@ -14,7 +14,9 @@ import { Notification } from './components/Notification';
 
 import { Post } from './types/Post';
 
-import { getPostsByUser } from './api/posts';
+// import { getPostsByUser } from './api/posts';
+
+import { client } from './utils/fetchClient';
 import { ErrorType } from './Enums/Error';
 
 export const App = () => {
@@ -36,7 +38,9 @@ export const App = () => {
     setPosts([]);
     setPostsError('');
     setSelectedPost(null);
-    getPostsByUser(userId)
+    // getPostsByUser(userId)
+    client
+      .get<Post[]>(`/posts?userId=${userId}`)
       .then(setPosts)
       .catch(() => {
         setPostsError(ErrorType.UNEXPECTED);

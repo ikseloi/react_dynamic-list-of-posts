@@ -8,11 +8,13 @@ import { ErrorType } from '../../Enums/Error';
 import { Post } from '../../types/Post';
 import { Comment, CommentData } from '../../types/Comment';
 
-import {
-  addComment,
-  deleteComment,
-  getCommentsByPost,
-} from '../../api/comments';
+// import {
+//   addComment,
+//   deleteComment,
+//   getCommentsByPost,
+// } from '../../api/comments';
+
+import { client } from '../../utils/fetchClient';
 
 import {
   optimisticDeleteComment,
@@ -36,7 +38,9 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
     setComments([]);
     setIsCommentFormVisible(false);
     setIsCommentsLoading(true);
-    getCommentsByPost(post.id)
+    // getCommentsByPost(post.id)
+    client
+      .get<Comment[]>(`/comments?postId=${post.id}`)
       .then(setComments)
       .catch(() => {
         setCommentsLoadError(ErrorType.UNEXPECTED);
@@ -53,7 +57,18 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
   const handleAdd = (data: CommentData) => {
     setCommentAddError('');
 
-    return addComment({ postId: post.id, ...data })
+    // return addComment({ postId: post.id, ...data })
+    //   .then(newComment => {
+    //     setComments(current => [...current, newComment]);
+    //   })
+    //   .catch(error => {
+    //     setCommentAddError(ErrorType.UNEXPECTED);
+
+    //     throw error;
+    //   });
+
+    return client
+      .post<Comment>(`/comments`, data)
       .then(newComment => {
         setComments(current => [...current, newComment]);
       })
@@ -77,7 +92,15 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
 
     setComments(updatedComments);
 
-    return deleteComment(commentId).catch(error => {
+    // return deleteComment(commentId).catch(error => {
+    //   setComments(currentComments => restoreComment(currentComments, rollback));
+
+    //   setCommentDeleteError(ErrorType.UNEXPECTED);
+
+    //   throw error;
+    // });
+
+    return client.delete(`/comments/${commentId}`).catch(error => {
       setComments(currentComments => restoreComment(currentComments, rollback));
 
       setCommentDeleteError(ErrorType.UNEXPECTED);
