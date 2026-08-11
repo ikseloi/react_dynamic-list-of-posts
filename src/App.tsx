@@ -64,8 +64,8 @@ export const App = () => {
   );
 
   const handlePostSelect = useCallback(
-    (post: Post) => {
-      if (post.id === selectedPost?.id) {
+    (post: Post | null) => {
+      if (post?.id === selectedPost?.id) {
         return;
       }
 
@@ -91,7 +91,11 @@ export const App = () => {
             <div className="tile is-child box is-success">
               <div className="block">
                 {usersError && (
-                  <Notification message={usersError} color={'is-danger'} />
+                  <Notification
+                    message={usersError}
+                    color={'is-danger'}
+                    dataCy="UserssLoadingError"
+                  />
                 )}
                 <UserSelector
                   selectedUserId={selectedUserId}
@@ -108,7 +112,11 @@ export const App = () => {
                 {isPostsLoading && <Loader />}
 
                 {postsError && (
-                  <Notification message={postsError} color={'is-danger'} />
+                  <Notification
+                    message={postsError}
+                    color={'is-danger'}
+                    dataCy="PostsLoadingError"
+                  />
                 )}
 
                 {noPosts && (
@@ -118,7 +126,11 @@ export const App = () => {
                 )}
 
                 {hasPosts && (
-                  <PostsList posts={posts} onSelect={handlePostSelect} />
+                  <PostsList
+                    posts={posts}
+                    selectedPost={selectedPost}
+                    onSelect={handlePostSelect}
+                  />
                 )}
               </div>
             </div>

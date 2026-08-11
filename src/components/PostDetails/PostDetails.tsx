@@ -68,7 +68,7 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
     //   });
 
     return client
-      .post<Comment>(`/comments`, data)
+      .post<Comment>(`/comments`, { postId: post.id, ...data })
       .then(newComment => {
         setComments(current => [...current, newComment]);
       })
@@ -123,7 +123,11 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
         {isCommentsLoading && <Loader />}
 
         {commentsLoadError && (
-          <Notification message={commentsLoadError} color={'is-danger'} />
+          <Notification
+            message={commentsLoadError}
+            color={'is-danger'}
+            dataCy="CommentsError"
+          />
         )}
 
         {shouldShowContent && comments.length === 0 && (
@@ -140,14 +144,14 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
           <>
             <p className="title is-4">Comments:</p>
 
-            {comments.map(comment => (
+            {comments.map((comment, index) => (
               <article
                 className="message is-small"
                 data-cy="Comment"
-                key={comment.id}
+                key={index}
               >
                 <div className="message-header">
-                  <a href="mailto:misha@mate.academy" data-cy="CommentAuthor">
+                  <a href={`mailto:${comment.email}`} data-cy="CommentAuthor">
                     {comment.name}
                   </a>
                   <button

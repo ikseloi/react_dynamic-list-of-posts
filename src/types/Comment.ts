@@ -8,4 +8,4 @@ export interface Comment {
 
 export type CommentData = Pick<Comment, 'name' | 'email' | 'body'>;
 
-export type NewComment = CommentData & { postId: number };
+export type CreateCommentData = CommentData & { postId: number };
