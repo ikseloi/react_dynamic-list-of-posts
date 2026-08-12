@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { Loader } from '../Loader';
 import { NewCommentForm } from './NewCommentForm';
@@ -14,6 +14,23 @@ import { Comment, CommentData } from '../../types/Comment';
 //   getCommentsByPost,
 // } from '../../api/comments';
 
+type CommentsState = {
+  items: Comment[];
+  isLoading: boolean;
+  error: string;
+};
+
+type CommentsStateUpdate = {
+  items?: Comment[];
+  isLoading?: boolean;
+  error?: string;
+};
+
+type ActionsErrorState = {
+  add: string;
+  delete: string;
+};
+
 import { client } from '../../utils/fetchClient';
 
 import {
@@ -24,38 +41,47 @@ import {
 type Props = { post: Post };
 
 export const PostDetails: React.FC<Props> = ({ post }) => {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [commentsLoadError, setCommentsLoadError] = useState('');
-  const [commentAddError, setCommentAddError] = useState('');
-  const [commentDeleteError, setCommentDeleteError] = useState('');
-  const [isCommentsLoading, setIsCommentsLoading] = useState(false);
+  const [commentsState, setCommentsState] = useState<CommentsState>({
+    items: [],
+    isLoading: false,
+    error: '',
+  });
+
+  const [errors, setErrors] = useState<ActionsErrorState>({
+    add: '',
+    delete: '',
+  });
+
+  const updateCommentsState = useCallback(
+    ({ items = [], isLoading = false, error = '' }: CommentsStateUpdate) => {
+      setCommentsState({ items, isLoading, error });
+    },
+    [],
+  );
+
   const [isCommentFormVisible, setIsCommentFormVisible] = useState(false);
 
   useEffect(() => {
-    setCommentsLoadError('');
-    setCommentAddError('');
-    setCommentDeleteError('');
-    setComments([]);
+    setErrors({ add: '', delete: '' });
     setIsCommentFormVisible(false);
-    setIsCommentsLoading(true);
+    updateCommentsState({ isLoading: true });
     // getCommentsByPost(post.id)
     client
       .get<Comment[]>(`/comments?postId=${post.id}`)
-      .then(setComments)
-      .catch(() => {
-        setCommentsLoadError(ErrorType.UNEXPECTED);
+      .then(fetchedComments => {
+        updateCommentsState({ items: fetchedComments });
       })
-      .finally(() => {
-        setIsCommentsLoading(false);
+      .catch(() => {
+        updateCommentsState({ error: ErrorType.UNEXPECTED });
       });
-  }, [post.id]);
+  }, [post.id, updateCommentsState]);
 
   const handleShowCommentForm = () => {
     setIsCommentFormVisible(true);
   };
 
   const handleAdd = (data: CommentData) => {
-    setCommentAddError('');
+    setErrors(prev => ({ ...prev, add: '' }));
 
     // return addComment({ postId: post.id, ...data })
     //   .then(newComment => {
@@ -70,19 +96,22 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
     return client
       .post<Comment>(`/comments`, { postId: post.id, ...data })
       .then(newComment => {
-        setComments(current => [...current, newComment]);
+        // setComments(current => [...current, newComment]);
+        setCommentsState(prev => ({
+          ...prev,
+          items: [...prev.items, newComment],
+        }));
       })
       .catch(error => {
-        setCommentAddError(ErrorType.UNEXPECTED);
-
+        setErrors(prev => ({ ...prev, add: ErrorType.UNEXPECTED }));
         throw error;
       });
   };
 
   const handleDelete = (commentId: number) => {
-    setCommentDeleteError('');
+    setErrors(prev => ({ ...prev, delete: '' }));
 
-    const result = optimisticDeleteComment(comments, commentId);
+    const result = optimisticDeleteComment(commentsState.items, commentId);
 
     if (!result) {
       return;
@@ -90,7 +119,10 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
 
     const { updatedComments, rollback } = result;
 
-    setComments(updatedComments);
+    setCommentsState(prev => ({
+      ...prev,
+      items: updatedComments,
+    }));
 
     // return deleteComment(commentId).catch(error => {
     //   setComments(currentComments => restoreComment(currentComments, rollback));
@@ -101,14 +133,22 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
     // });
 
     return client.delete(`/comments/${commentId}`).catch(error => {
-      setComments(currentComments => restoreComment(currentComments, rollback));
+      setCommentsState(prev => ({
+        ...prev,
+        items: restoreComment(prev.items, rollback),
+      }));
 
-      setCommentDeleteError(ErrorType.UNEXPECTED);
+      setErrors(prev => ({ ...prev, delete: ErrorType.UNEXPECTED }));
 
       throw error;
     });
   };
 
+  const {
+    items: comments,
+    isLoading: isCommentsLoading,
+    error: commentsLoadError,
+  } = commentsState;
   const shouldShowContent = !isCommentsLoading && !commentsLoadError;
 
   return (
@@ -136,19 +176,19 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
           </p>
         )}
 
-        {commentDeleteError && (
-          <Notification message={commentDeleteError} color="is-danger" />
+        {errors.delete && (
+          <Notification message={errors.delete} color="is-danger" />
         )}
 
         {shouldShowContent && comments.length > 0 && (
           <>
             <p className="title is-4">Comments:</p>
 
-            {comments.map((comment, index) => (
+            {comments.map(comment => (
               <article
                 className="message is-small"
                 data-cy="Comment"
-                key={index}
+                key={comment.id}
               >
                 <div className="message-header">
                   <a href={`mailto:${comment.email}`} data-cy="CommentAuthor">
@@ -172,9 +212,7 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
         )}
       </div>
 
-      {commentAddError && (
-        <Notification message={commentAddError} color="is-danger" />
-      )}
+      {errors.add && <Notification message={errors.add} color="is-danger" />}
 
       {shouldShowContent && !isCommentFormVisible && (
         <button

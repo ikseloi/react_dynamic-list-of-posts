@@ -19,36 +19,60 @@ import { Post } from './types/Post';
 import { client } from './utils/fetchClient';
 import { ErrorType } from './Enums/Error';
 
+type PostsState = {
+  items: Post[];
+  isLoading: boolean;
+  error: string;
+};
+
+type PostsStateUpdate = {
+  items?: Post[];
+  isLoading?: boolean;
+  error?: string;
+};
+
 export const App = () => {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
   const [usersError, setUsersError] = useState('');
-  const [postsError, setPostsError] = useState('');
-  const [isPostsLoading, setIsPostsLoading] = useState(false);
+  const [postsState, setPostsState] = useState<PostsState>({
+    items: [],
+    isLoading: false,
+    error: '',
+  });
 
-  const loadPosts = useCallback((userId: number) => {
-    if (!userId) {
-      setIsPostsLoading(false);
+  const {
+    items: posts,
+    isLoading: isPostsLoading,
+    error: postsError,
+  } = postsState;
 
-      return;
-    }
-
-    setIsPostsLoading(true);
-    setPosts([]);
-    setPostsError('');
-    setSelectedPost(null);
-    // getPostsByUser(userId)
-    client
-      .get<Post[]>(`/posts?userId=${userId}`)
-      .then(setPosts)
-      .catch(() => {
-        setPostsError(ErrorType.UNEXPECTED);
-      })
-      .finally(() => {
-        setIsPostsLoading(false);
+  const updatePostsState = useCallback(
+    ({ items = [], isLoading = false, error = '' }: PostsStateUpdate) => {
+      setPostsState({
+        items,
+        isLoading,
+        error,
       });
-  }, []);
+    },
+    [],
+  );
+
+  const loadPosts = useCallback(
+    (userId: number) => {
+      updatePostsState({ isLoading: true });
+      // getPostsByUser(userId)
+      client
+        .get<Post[]>(`/posts?userId=${userId}`)
+        .then(fetchedPosts => {
+          updatePostsState({ items: fetchedPosts });
+        })
+        .catch(() => {
+          updatePostsState({ error: ErrorType.UNEXPECTED });
+        });
+    },
+    [updatePostsState],
+  );
 
   const handleUserSelect = useCallback(
     (userId: number) => {
@@ -56,8 +80,8 @@ export const App = () => {
         return;
       }
 
-      setSelectedUserId(userId);
       setSelectedPost(null);
+      setSelectedUserId(userId);
       loadPosts(userId);
     },
     [selectedUserId, loadPosts],
@@ -91,11 +115,7 @@ export const App = () => {
             <div className="tile is-child box is-success">
               <div className="block">
                 {usersError && (
-                  <Notification
-                    message={usersError}
-                    color={'is-danger'}
-                    dataCy="UserssLoadingError"
-                  />
+                  <Notification message={usersError} color={'is-danger'} />
                 )}
                 <UserSelector
                   selectedUserId={selectedUserId}
