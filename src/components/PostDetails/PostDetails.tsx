@@ -1,18 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
-
 import { Loader } from '../Loader';
 import { NewCommentForm } from './NewCommentForm';
 import { Notification } from '../Notification';
-
 import { ErrorType } from '../../Enums/Error';
 import { Post } from '../../types/Post';
 import { Comment, CommentData } from '../../types/Comment';
-
 // import {
 //   addComment,
 //   deleteComment,
 //   getCommentsByPost,
 // } from '../../api/comments';
+import { client } from '../../utils/fetchClient';
+import {
+  optimisticDeleteComment,
+  restoreComment,
+} from '../../utils/optimisticDeleteComment';
 
 type CommentsState = {
   items: Comment[];
@@ -20,23 +22,10 @@ type CommentsState = {
   error: string;
 };
 
-type CommentsStateUpdate = {
-  items?: Comment[];
-  isLoading?: boolean;
-  error?: string;
-};
-
 type ActionsErrorState = {
   add: string;
   delete: string;
 };
-
-import { client } from '../../utils/fetchClient';
-
-import {
-  optimisticDeleteComment,
-  restoreComment,
-} from '../../utils/optimisticDeleteComment';
 
 type Props = { post: Post };
 
@@ -52,27 +41,31 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
     delete: '',
   });
 
-  const updateCommentsState = useCallback(
-    ({ items = [], isLoading = false, error = '' }: CommentsStateUpdate) => {
-      setCommentsState({ items, isLoading, error });
-    },
-    [],
-  );
+  const updateCommentsState = useCallback((updates: Partial<CommentsState>) => {
+    setCommentsState(prev => ({
+      ...prev,
+      ...updates,
+    }));
+  }, []);
 
   const [isCommentFormVisible, setIsCommentFormVisible] = useState(false);
 
   useEffect(() => {
     setErrors({ add: '', delete: '' });
     setIsCommentFormVisible(false);
-    updateCommentsState({ isLoading: true });
+    updateCommentsState({ items: [], isLoading: true, error: '' });
     // getCommentsByPost(post.id)
     client
       .get<Comment[]>(`/comments?postId=${post.id}`)
       .then(fetchedComments => {
-        updateCommentsState({ items: fetchedComments });
+        updateCommentsState({ items: fetchedComments, isLoading: false });
       })
       .catch(() => {
-        updateCommentsState({ error: ErrorType.UNEXPECTED });
+        updateCommentsState({
+          items: [],
+          isLoading: false,
+          error: ErrorType.UNEXPECTED,
+        });
       });
   }, [post.id, updateCommentsState]);
 
@@ -84,15 +77,6 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
     setErrors(prev => ({ ...prev, add: '' }));
 
     // return addComment({ postId: post.id, ...data })
-    //   .then(newComment => {
-    //     setCommentsState(prev => [...prev, items: [...prev.items, newComment]);
-    //   })
-    //   .catch(error => {
-    //      setErrors(prev => ({ ...prev, add: ErrorType.UNEXPECTED }));
-
-    // throw error;
-    //   });
-
     return client
       .post<Comment>(`/comments`, { postId: post.id, ...data })
       .then(newComment => {
@@ -124,16 +108,6 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
     }));
 
     // return deleteComment(commentId).catch(error => {
-    //   setCommentsState(prev => ({
-    //     ...prev,
-    //     items: restoreComment(prev.items, rollback),
-    //   }));
-
-    //   setErrors(prev => ({ ...prev, delete: ErrorType.UNEXPECTED }));
-
-    //   throw error;
-    // });
-
     return client.delete(`/comments/${commentId}`).catch(error => {
       setCommentsState(prev => ({
         ...prev,

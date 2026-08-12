@@ -9,5 +9,3 @@ export const Notification = ({ message, color, dataCy }: Props) => (
     {message}
   </div>
 );
-
-// "PostsLoadingError"
