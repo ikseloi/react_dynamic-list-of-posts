@@ -85,18 +85,17 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
 
     // return addComment({ postId: post.id, ...data })
     //   .then(newComment => {
-    //     setComments(current => [...current, newComment]);
+    //     setCommentsState(prev => [...prev, items: [...prev.items, newComment]);
     //   })
     //   .catch(error => {
-    //     setCommentAddError(ErrorType.UNEXPECTED);
+    //      setErrors(prev => ({ ...prev, add: ErrorType.UNEXPECTED }));
 
-    //     throw error;
+    // throw error;
     //   });
 
     return client
       .post<Comment>(`/comments`, { postId: post.id, ...data })
       .then(newComment => {
-        // setComments(current => [...current, newComment]);
         setCommentsState(prev => ({
           ...prev,
           items: [...prev.items, newComment],
@@ -125,9 +124,12 @@ export const PostDetails: React.FC<Props> = ({ post }) => {
     }));
 
     // return deleteComment(commentId).catch(error => {
-    //   setComments(currentComments => restoreComment(currentComments, rollback));
+    //   setCommentsState(prev => ({
+    //     ...prev,
+    //     items: restoreComment(prev.items, rollback),
+    //   }));
 
-    //   setCommentDeleteError(ErrorType.UNEXPECTED);
+    //   setErrors(prev => ({ ...prev, delete: ErrorType.UNEXPECTED }));
 
     //   throw error;
     // });
