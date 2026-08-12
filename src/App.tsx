@@ -1,34 +1,22 @@
 import { useState, useCallback } from 'react';
-
 import classNames from 'classnames';
-
 import 'bulma/css/bulma.css';
 import '@fortawesome/fontawesome-free/css/all.css';
 import './App.scss';
-
 import { PostsList } from './components/PostsList';
 import { PostDetails } from './components/PostDetails/PostDetails';
 import { UserSelector } from './components/UserSelector';
 import { Loader } from './components/Loader';
 import { Notification } from './components/Notification';
-
 import { Post } from './types/Post';
-
-// import { getPostsByUser } from './api/posts';
-
-import { client } from './utils/fetchClient';
 import { ErrorType } from './Enums/Error';
+// import { getPostsByUser } from './api/posts';
+import { client } from './utils/fetchClient';
 
 type PostsState = {
   items: Post[];
   isLoading: boolean;
   error: string;
-};
-
-type PostsStateUpdate = {
-  items?: Post[];
-  isLoading?: boolean;
-  error?: string;
 };
 
 export const App = () => {
@@ -47,28 +35,28 @@ export const App = () => {
     error: postsError,
   } = postsState;
 
-  const updatePostsState = useCallback(
-    ({ items = [], isLoading = false, error = '' }: PostsStateUpdate) => {
-      setPostsState({
-        items,
-        isLoading,
-        error,
-      });
-    },
-    [],
-  );
+  const updatePostsState = useCallback((updates: Partial<PostsState>) => {
+    setPostsState(prev => ({
+      ...prev,
+      ...updates,
+    }));
+  }, []);
 
   const loadPosts = useCallback(
     (userId: number) => {
-      updatePostsState({ isLoading: true });
+      updatePostsState({ items: [], isLoading: true, error: '' });
       // getPostsByUser(userId)
       client
         .get<Post[]>(`/posts?userId=${userId}`)
         .then(fetchedPosts => {
-          updatePostsState({ items: fetchedPosts });
+          updatePostsState({ items: fetchedPosts, isLoading: false });
         })
         .catch(() => {
-          updatePostsState({ error: ErrorType.UNEXPECTED });
+          updatePostsState({
+            items: [],
+            isLoading: false,
+            error: ErrorType.UNEXPECTED,
+          });
         });
     },
     [updatePostsState],
